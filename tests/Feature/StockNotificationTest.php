@@ -1,13 +1,10 @@
 <?php
 
-use App\Models\Product;
 use App\Models\StockNotification;
 use App\Models\User;
-use Illuminate\Support\Facades\Session;
+use App\Models\Product;
 
-beforeEach(function () {
-    $this->artisan('migrate:fresh');
-});
+// RefreshDatabase is enabled globally in Pest.php for Feature tests
 
 // 1. Auth user can subscribe to out-of-stock product
 test('auth_user_can_subscribe_to_out_of_stock_product', function () {
@@ -30,7 +27,6 @@ test('guest_can_subscribe_with_email', function () {
     $product = Product::factory()->create(['stock' => 0]);
 
     $this->post(route('stock-notifications.subscribe', $product), [
-        'product_id' => $product->id,
         'email' => 'guest@example.com',
     ])->assertRedirect();
 

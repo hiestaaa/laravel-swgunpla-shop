@@ -23,8 +23,13 @@ class InventoryReservationController extends Controller
 
         $product = Product::findOrFail($request->product_id);
 
-        // Kiểm tra tồn kho có đủ không
-        if ($product->stock < $request->quantity) {
+        // Kiểm tra tồn kho có đủ không (bao gồm cả reservation đang active)
+        $activeReservations = InventoryReservation::active()
+            ->forProduct($product->id)
+            ->sum('quantity');
+        $availableStock = $product->stock - $activeReservations;
+
+        if ($availableStock < $request->quantity) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sản phẩm không đủ số lượng tồn kho!',
@@ -35,51 +40,39 @@ class InventoryReservationController extends Controller
         $userId = auth()->id();
         $quantity = $request->quantity;
 
-        DB::beginTransaction();
+        // Tìm reservation đang active cho sản phẩm này trong session hiện tại
+        $existing = InventoryReservation::active()
+            ->forProduct($product->id)
+            ->forSession($sessionId)
+            ->first();
 
-        try {
-            // Tìm reservation đang active cho sản phẩm này trong session hiện tại
-            $existing = InventoryReservation::active()
-                ->forProduct($product->id)
-                ->forSession($sessionId)
-                ->first();
-
-            if ($existing) {
-                // Cập nhật reservation cũ: reset thời gian hết hạn
-                $existing->update([
-                    'quantity' => $quantity,
-                    'expires_at' => now()->addMinutes(15),
-                ]);
-            } else {
-                // Tạo reservation mới
-                InventoryReservation::create([
-                    'product_id' => $product->id,
-                    'session_id' => $sessionId,
-                    'user_id' => $userId,
-                    'quantity' => $quantity,
-                    'expires_at' => now()->addMinutes(15),
-                    'status' => 'pending',
-                ]);
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Đặt trước tồn kho thành công.',
-                'data' => [
-                    'product_id' => $product->id,
-                    'quantity' => $quantity,
-                    'expires_at' => now()->addMinutes(15)->toDateTimeString(),
-                ],
+        if ($existing) {
+            // Cập nhật reservation cũ: reset thời gian hết hạn
+            $existing->update([
+                'quantity' => $quantity,
+                'expires_at' => now()->addMinutes(15),
             ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Lỗi khi đặt trước: ' . $e->getMessage(),
-            ], 500);
+        } else {
+            // Tạo reservation mới
+            InventoryReservation::create([
+                'product_id' => $product->id,
+                'session_id' => $sessionId,
+                'user_id' => $userId,
+                'quantity' => $quantity,
+                'expires_at' => now()->addMinutes(15),
+                'status' => 'pending',
+            ]);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đặt trước tồn kho thành công.',
+            'data' => [
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'expires_at' => now()->addMinutes(15)->toDateTimeString(),
+            ],
+        ]);
     }
 
     /**

@@ -11,22 +11,17 @@ class StockNotificationController extends Controller
 {
     /**
      * Đăng ký nhận thông báo khi sản phẩm có hàng trở lại.
+     * Product được resolve từ route model binding: /products/{product}/notify
      */
-    public function subscribe(Request $request)
+    public function subscribe(Request $request, Product $product)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-        ]);
-
-        $product = Product::findOrFail($request->product_id);
-
         // Chỉ cho phép đăng ký khi sản phẩm hết hàng
         if ($product->stock > 0) {
             return back()->with('error', 'Sản phẩm này vẫn còn hàng, không cần đăng ký thông báo.');
         }
 
         $userId = Auth::id();
-        $email = Auth::user()->email ?? $request->input('email');
+        $email = $userId ? Auth::user()->email : $request->input('email');
 
         // Kiểm tra đã đăng ký chưa
         $existing = StockNotification::where('product_id', $product->id)

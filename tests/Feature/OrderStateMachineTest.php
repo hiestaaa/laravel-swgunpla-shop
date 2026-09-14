@@ -7,27 +7,22 @@ use App\Models\User;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\Auth;
 
-beforeEach(function () {
-    $this->artisan('migrate:fresh');
-    // Model events use auth()->id() which is null outside HTTP context.
-    // Set a default so booted() event creator is populated.
-    Auth::shouldReceive('id')->andReturn(1);
-});
+uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+
+// Model events use $order->user_id for created events, auth()->id() for status_changed.
+// Set a default so booted() status_changed creator is populated.
+Auth::shouldReceive('id')->andReturn(1);
 
 // 1. Order creation creates 'created' event
 test('order_creation_creates_event', function () {
     $user = User::factory()->create();
-    $product = Product::factory()->create(['stock' => 10]);
 
-    // Simulate order creation by creating an order directly
-    // and checking that the booted event fires
-    $order = new Order([
+    $order = Order::factory()->create([
         'user_id' => $user->id,
         'total_amount' => 100000,
         'status' => 'pending',
         'payment_method' => 'cod',
     ]);
-    $order->save();
 
     $event = OrderEvent::forOrder($order->id)->first();
     expect($event)->not->toBeNull();
@@ -64,8 +59,18 @@ test('event_records_from_and_to_status', function () {
     expect($event->to_status)->toBe('completed');
 });
 
-// 4. Event records creator
+// 4. Event records creator (created event uses order owner)
 test('event_records_creator', function () {
+    $user = User::factory()->create();
+
+    $order = Order::factory()->create(['status' => 'pending', 'user_id' => $user->id]);
+
+    $event = OrderEvent::forOrder($order->id)->byType('created')->first();
+    expect($event->created_by)->toBe($user->id);
+});
+
+// 4b. Status change event records auth user as creator
+test('status_change_records_auth_creator', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 
     // Override the default Auth::shouldReceive for this test
@@ -73,7 +78,9 @@ test('event_records_creator', function () {
 
     $order = Order::factory()->create(['status' => 'pending']);
 
-    $event = OrderEvent::forOrder($order->id)->byType('created')->first();
+    $order->update(['status' => 'processing']);
+
+    $event = OrderEvent::forOrder($order->id)->byType('status_changed')->first();
     expect($event->created_by)->toBe($admin->id);
 });
 
@@ -81,11 +88,12 @@ test('event_records_creator', function () {
 test('order_events_are_ordered_by_date', function () {
     $order = Order::factory()->create(['status' => 'pending']);
 
-    // Create multiple events
+    // Create multiple events with delays so timestamps differ
     $order->update(['status' => 'processing']);
+    sleep(1);
     $order->update(['status' => 'completed']);
 
-    $events = OrderEvent::forOrder($order->id)->get();
+    $events = OrderEvent::forOrder($order->id)->latest()->get();
     expect($events->count())->toBeGreaterThanOrEqual(3); // created + 2 status_changed
 
     // First event should be the most recent

@@ -2,10 +2,9 @@
 
 use App\Models\InventoryReservation;
 use App\Models\Product;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-beforeEach(function () {
-    $this->artisan('migrate:fresh');
-});
+uses(RefreshDatabase::class);
 
 // 1. Reservation is expired when past due
 test('reservation_is_expired_when_past_due', function () {
@@ -48,19 +47,22 @@ test('scope_active_filters_only_pending_unexpired', function () {
     $product = Product::factory()->create();
 
     // Active reservation
-    InventoryReservation::factory()->forProduct($product->id)->create([
+    InventoryReservation::factory()->create([
+        'product_id' => $product->id,
         'status' => 'pending',
         'expires_at' => now()->addMinutes(10),
     ]);
 
     // Expired reservation
-    InventoryReservation::factory()->forProduct($product->id)->create([
+    InventoryReservation::factory()->create([
+        'product_id' => $product->id,
         'status' => 'pending',
         'expires_at' => now()->subMinutes(10),
     ]);
 
     // Released reservation
-    InventoryReservation::factory()->forProduct($product->id)->create([
+    InventoryReservation::factory()->create([
+        'product_id' => $product->id,
         'status' => 'released',
         'expires_at' => now()->addMinutes(10),
     ]);
@@ -74,8 +76,8 @@ test('scope_for_product_filters_correctly', function () {
     $productA = Product::factory()->create();
     $productB = Product::factory()->create();
 
-    InventoryReservation::factory()->forProduct($productA->id)->count(3)->create();
-    InventoryReservation::factory()->forProduct($productB->id)->count(2)->create();
+    InventoryReservation::factory()->count(3)->create(['product_id' => $productA->id]);
+    InventoryReservation::factory()->count(2)->create(['product_id' => $productB->id]);
 
     $countA = InventoryReservation::forProduct($productA->id)->count();
     $countB = InventoryReservation::forProduct($productB->id)->count();

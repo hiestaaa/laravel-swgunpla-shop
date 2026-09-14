@@ -52,15 +52,17 @@ Route::middleware('auth')->group(function () {
     // === ĐÁNH GIÁ SẢN PHẨM ===
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
-    // === THÔNG BÁO TỒN KHO ===
-    Route::post('/products/{product}/notify', [StockNotificationController::class, 'subscribe'])->name('stock-notifications.subscribe');
-    Route::delete('/stock-notifications/{notification}', [StockNotificationController::class, 'unsubscribe'])->name('stock-notifications.unsubscribe');
-
     // 1. Gửi yêu cầu thanh toán VNPay
     Route::post('/checkout/vnpay', [VNPayController::class, 'createPayment'])->name('checkout.vnpay');
     // 2. Xử lý kết quả trả về từ VNPay
     Route::get('/checkout/vnpay/return', [VNPayController::class, 'vnpayReturn'])->name('vnpay.return');
 });
+
+// === THÔNG BÁO TỒN KHO ===
+// Đăng ký nhận thông báo (cho cả guest và user đã đăng nhập)
+Route::post('/products/{product}/notify', [StockNotificationController::class, 'subscribe'])->name('stock-notifications.subscribe');
+// Hủy đăng ký (yêu cầu đăng nhập)
+Route::middleware('auth')->delete('/stock-notifications/{notification}', [StockNotificationController::class, 'unsubscribe'])->name('stock-notifications.unsubscribe');
 
 // === USER ===
 // Route xem sản phẩm (Public)
