@@ -54,6 +54,30 @@
                     <i class="bi bi-cart-plus me-1"></i> Thêm vào giỏ
                 </button>
             </form>
+            @else
+            <div class="alert alert-warning">
+                <i class="bi bi-bell me-1"></i> Sản phẩm tạm hết hàng.
+                @auth
+                    @php
+                        $hasNotification = \App\Models\StockNotification::where('product_id', $product->id)
+                            ->where('user_id', auth()->id())
+                            ->where('status', 'pending')
+                            ->exists();
+                    @endphp
+                    @if($hasNotification)
+                        <span class="badge bg-success ms-2">Đã đăng ký nhận thông báo</span>
+                    @else
+                        <form action="{{ route('stock-notifications.subscribe', $product) }}" method="POST" class="d-inline mt-2">
+                            @csrf
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="bi bi-bell me-1"></i> Thông báo khi có hàng
+                            </button>
+                        </form>
+                    @endif
+                @else
+                    <p class="mb-0 mt-2 small"><a href="{{ route('login') }}">Đăng nhập</a> để nhận thông báo khi có hàng.</p>
+                @endauth
+            </div>
             @endif
 
             <hr>

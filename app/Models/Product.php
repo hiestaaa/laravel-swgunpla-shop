@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Storage;
 class Product extends Model
 {
     use HasFactory;
-    protected $fillable = [ 
-        'name', 
-        'slug', 
-        'description', 
-        'price', 
-        'stock', 
-        'category_id', 
-        'brand_id' 
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'price',
+        'stock',
+        'category_id',
+        'brand_id'
     ];
 
     // Nhiều Product thuộc về 1 Category
@@ -39,11 +39,22 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
+    // 1 Product có nhiều thông báo tồn kho
+    public function stockNotifications() {
+        return $this->hasMany(StockNotification::class);
+    }
+
     // Nhiều Product có trong nhiều Order
     public function orders() {
         return $this->belongsToMany(Order::class, 'order_items')->withPivot('quantity', 'price');
     }
-    
+
+    // Kiểm tra sản phẩm còn hàng
+    public function isInStock(): bool
+    {
+        return $this->stock > 0;
+    }
+
     // === ACCESSOR ĐỂ LẤY ẢNH ĐẦU TIÊN ===
     /**
      * Lấy URL đầy đủ của hình ảnh đầu tiên.

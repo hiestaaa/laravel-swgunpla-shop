@@ -113,4 +113,53 @@
         </div>
     </div>
 </div>
+
+{{-- Order Event Timeline --}}
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Lịch sử trạng thái</h5>
+    </div>
+    <div class="card-body">
+        @php
+            $events = \App\Models\OrderEvent::forOrder($order->id)->with('creator')->get();
+        @endphp
+        @if($events->count() > 0)
+            <div class="timeline">
+                @foreach($events as $event)
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <span class="badge
+                            @switch($event->event_type)
+                                @case('created') bg-primary @break
+                                @case('status_changed') bg-warning text-dark @break
+                                @case('payment_received') bg-success @break
+                                @case('shipped') bg-info @break
+                                @case('delivered') bg-success @break
+                                @case('refunded') bg-danger @break
+                                @default bg-secondary
+                            @endswitch">
+                            {{ $event->event_type }}
+                        </span>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <div class="small">
+                            @if($event->from_status && $event->to_status)
+                                <strong>{{ ucfirst($event->from_status) }}</strong>
+                                <i class="bi bi-arrow-right mx-1"></i>
+                                <strong>{{ ucfirst($event->to_status) }}</strong>
+                            @elseif($event->to_status)
+                                <strong>{{ ucfirst($event->to_status) }}</strong>
+                            @endif
+                        </div>
+                        <div class="text-muted small">{{ $event->created_at->format('d/m/Y H:i') }}</div>
+                        <div class="small text-muted">bởi {{ $event->creator->name ?? 'System' }}</div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        @else
+            <p class="text-muted mb-0">Chưa có sự kiện nào.</p>
+        @endif
+    </div>
+</div>
 @endsection

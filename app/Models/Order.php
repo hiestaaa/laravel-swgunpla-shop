@@ -9,31 +9,35 @@ class Order extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'user_id', 
-        'address_id', 
-        'total_amount', 
-        'status', 
-        'payment_method', 
+        'user_id',
+        'address_id',
+        'total_amount',
+        'status',
+        'payment_method',
         'voucher_id'
     ];
 
-    // Nhiều Order thuộc về 1 User 
-    public function user() {
+    // Nhiều Order thuộc về 1 User
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
-    
+
     // Nhiều Order được giao đến 1 Address
-    public function address() {
+    public function address()
+    {
         return $this->belongsTo(Address::class);
     }
 
     // Nhiều Order có nhiều Product
-    public function products() {
+    public function products()
+    {
         return $this->belongsToMany(Product::class, 'order_items')->withPivot('quantity', 'price');
     }
 
     // 1 Order có nhiều OrderItem
-    public function items() {
+    public function items()
+    {
         return $this->hasMany(OrderItem::class);
     }
 
@@ -42,10 +46,45 @@ class Order extends Model
         return $this->belongsTo(Voucher::class);
     }
 
+    // 1 Order có nhiều OrderEvent
+    public function events()
+    {
+        return $this->hasMany(OrderEvent::class);
+    }
+
     protected static function booted()
     {
+        // Lắng nghe sự kiện "created" (khi đơn hàng vừa được tạo)
+        static::created(function ($order) {
+            OrderEvent::create([
+                'order_id' => $order->id,
+                'event_type' => 'created',
+                'from_status' => null,
+                'to_status' => $order->status,
+                'metadata' => [
+                    'payment_method' => $order->payment_method,
+                    'total_amount' => (string) $order->total_amount,
+                ],
+                'created_by' => $order->user_id,
+            ]);
+        });
+
         // Lắng nghe sự kiện "updated" (khi đơn hàng được cập nhật)
         static::updated(function ($order) {
+            // Ghi log thay đổi trạng thái
+            $originalStatus = $order->getOriginal('status');
+            $newStatus = $order->status;
+
+            if ($originalStatus !== $newStatus) {
+                OrderEvent::create([
+                    'order_id' => $order->id,
+                    'event_type' => 'status_changed',
+                    'from_status' => $originalStatus,
+                    'to_status' => $newStatus,
+                    'metadata' => ['updated_at' => now()->toDateTimeString()],
+                    'created_by' => auth()->id(),
+                ]);
+            }
 
             // TRƯỜNG HỢP 1: HỦY ĐƠN HÀNG -> HOÀN KHO
             // Nếu trạng thái đổi thành 'cancelled' VÀ trạng thái cũ KHÔNG phải là 'cancelled'
@@ -91,3 +130,4 @@ class Order extends Model
         });
     }
 }
+

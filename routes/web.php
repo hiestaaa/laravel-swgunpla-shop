@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
 use App\Http\Controllers\Admin\VoucherController as AdminVoucherController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\StockNotificationController as AdminStockNotificationController;
+use App\Http\Controllers\Admin\OrderEventController;
 
 use App\Http\Controllers\User\OrderController as UserOrderController;
 
@@ -20,6 +22,8 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\VNPayController;
+use App\Http\Controllers\StockNotificationController;
+use App\Http\Controllers\InventoryReservationController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -41,15 +45,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
 
     // === LỊCH SỬ ĐƠN HÀNG ===
-    // Trang danh sách
     Route::get('/my-orders', [UserOrderController::class, 'index'])->name('user.orders.index');
-    // Trang chi tiết
     Route::get('/my-orders/{order}', [UserOrderController::class, 'show'])->name('user.orders.show');
-    // Hủy đơn hàng
     Route::post('/my-orders/{order}/cancel', [UserOrderController::class, 'cancel'])->name('user.orders.cancel');
 
     // === ĐÁNH GIÁ SẢN PHẨM ===
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+
+    // === THÔNG BÁO TỒN KHO ===
+    Route::post('/products/{product}/notify', [StockNotificationController::class, 'subscribe'])->name('stock-notifications.subscribe');
+    Route::delete('/stock-notifications/{notification}', [StockNotificationController::class, 'unsubscribe'])->name('stock-notifications.unsubscribe');
 
     // 1. Gửi yêu cầu thanh toán VNPay
     Route::post('/checkout/vnpay', [VNPayController::class, 'createPayment'])->name('checkout.vnpay');
@@ -72,12 +77,17 @@ Route::post('/cart/remove', [CartController::class, 'remove'])->name('cart.remov
 Route::post('/cart/apply-voucher', [CartController::class, 'applyVoucher'])->name('cart.apply_voucher');
 Route::get('/cart/remove-voucher', [CartController::class, 'removeVoucher'])->name('cart.remove_voucher');
 
+// === RESERVATION ===
+Route::post('/reservations', [InventoryReservationController::class, 'reserve'])->name('reservations.create');
+Route::post('/reservations/release', [InventoryReservationController::class, 'release'])->name('reservations.release');
+Route::post('/reservations/cleanup', [InventoryReservationController::class, 'cleanup'])->name('reservations.cleanup');
+
 // === ADMINISTRATOR ===
 // Nhóm các route quản trị, yêu cầu đăng nhập và là admin
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
+
     // CRUD Product
     Route::resource('products', AdminProductController::class);
     // CRUD Categories
@@ -87,22 +97,28 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // === XÓA ẢNH SẢN PHẨM ===
     Route::delete('/product-image/{productImage}', [AdminProductController::class, 'destroyImage'])->name('products.image.destroy');
-    
+
     // === QUẢN LÝ ĐƠN HÀNG ===
-    // Trang danh sách
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
-    // Trang chi tiết
     Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
-    // Cập nhật trạng thái
     Route::put('/orders/{order}', [AdminOrderController::class, 'update'])->name('orders.update');
 
     // === QUẢN LÝ ĐÁNH GIÁ ===
     Route::resource('reviews', AdminReviewController::class)->only(['index', 'destroy']);
-    
+
     Route::patch('/reviews/{review}/approve', [AdminReviewController::class, 'approve'])->name('reviews.approve');
 
     // === QUẢN LÝ VOUCHER ===
     Route::resource('vouchers', AdminVoucherController::class);
+
+    // === QUẢN LÝ THÔNG BÁO TỒN KHO ===
+    Route::get('/stock-notifications', [AdminStockNotificationController::class, 'index'])->name('stock-notifications.index');
+    Route::post('/stock-notifications/{notification}/notify', [AdminStockNotificationController::class, 'notify'])->name('stock-notifications.notify');
+    Route::post('/stock-notifications/bulk-notify', [AdminStockNotificationController::class, 'bulkNotify'])->name('stock-notifications.bulk-notify');
+
+    // === AUDIT TRAIL ĐƠN HÀNG ===
+    Route::get('/order-events', [OrderEventController::class, 'index'])->name('order-events.index');
+    Route::get('/order-events/{orderEvent}', [OrderEventController::class, 'show'])->name('order-events.show');
 });
 
 require __DIR__.'/auth.php';
