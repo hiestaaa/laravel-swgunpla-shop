@@ -28,28 +28,58 @@ class VNPayController extends Controller
 
         $total = 0;
         foreach ($cartItems as $item) $total += $item['price'] * $item['quantity'];
-        
-        // (Logic Voucher...)
-        $finalTotal = $total; 
-        // ... (Thêm logic voucher của bạn vào đây nếu có)
+
+        // Áp dụng voucher nếu có
+        $voucherSession = session()->get('voucher');
+        $discount = 0;
+        $voucherId = null;
+
+        if ($voucherSession) {
+            $voucher = Voucher::find($voucherSession['id']);
+            if ($voucher && $voucher->quantity > 0 && (!$voucher->expires_at || $voucher->expires_at >= Carbon::now())) {
+                if ($voucherSession['type'] == 'fixed') {
+                    $discount = $voucherSession['value'];
+                } elseif ($voucherSession['type'] == 'percent') {
+                    $discount = ($total * $voucherSession['value']) / 100;
+                }
+                if ($discount > $total) $discount = $total;
+                $voucherId = $voucher->id;
+            }
+        }
+        $finalTotal = $total - $discount;
 
         // Tạo Order trong DB
-        $order = Order::create([
-            'user_id' => $request->user()->id,
-            'address_id' => $request->address_id,
-            'total_amount' => $finalTotal,
-            'status' => 'pending', // QUAN TRỌNG: Trạng thái là PENDING
-            'payment_method' => 'vnpay',
-        ]);
-        
-        // Lưu chi tiết đơn hàng
-        foreach ($cartItems as $id => $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $id,
-                'quantity' => $item['quantity'],
-                'price' => $item['price'],
+        DB::beginTransaction();
+
+        try {
+            $order = Order::create([
+                'user_id' => $request->user()->id,
+                'address_id' => $request->address_id,
+                'total_amount' => $finalTotal,
+                'status' => 'pending', // QUAN TRỌNG: Trạng thái là PENDING
+                'payment_method' => 'vnpay',
+                'voucher_id' => $voucherId,
             ]);
+
+            // Lưu chi tiết đơn hàng
+            foreach ($cartItems as $id => $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $id,
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                ]);
+            }
+
+            // Trừ số lượng voucher
+            if ($voucherId) {
+                Voucher::find($voucherId)->decrement('quantity');
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Đã xảy ra lỗi khi tạo đơn hàng: ' . $e->getMessage());
         }
 
         // 2. CẤU HÌNH VNPAY URL (PHẦN QUAN TRỌNG ĐỂ CHUYỂN HƯỚNG)
@@ -146,7 +176,12 @@ class VNPayController extends Controller
             // Chữ ký hợp lệ
             $orderId = $inputData['vnp_TxnRef'];
             $order = Order::find($orderId);
-            
+
+            // Kiểm tra quyền sở hữu đơn hàng
+            if ($order && $request->user() && $order->user_id !== $request->user()->id) {
+                return redirect()->route('cart.index')->with('error', 'Bạn không có quyền truy cập đơn hàng này.');
+            }
+
             if ($request->vnp_ResponseCode == '00') {
                 // Giao dịch thành công
                 if ($order && $order->status == 'pending') {

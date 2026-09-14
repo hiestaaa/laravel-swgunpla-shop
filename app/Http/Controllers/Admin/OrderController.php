@@ -76,6 +76,26 @@ class OrderController extends Controller
             'status' => 'required|string|in:pending,processing,completed,cancelled',
         ]);
 
+        $newStatus = $validated['status'];
+        $currentStatus = $order->status;
+
+        // Không cho phép chuyển trạng thái nếu đơn đã hoàn thành (trạng thái cuối)
+        if ($currentStatus === 'completed' && $newStatus !== 'completed') {
+            return back()->with('error', "Không thể chuyển trạng thái đơn hàng đã hoàn thành.");
+        }
+
+        // Ngăn chuyển từ pending/processing trực tiếp sang completed mà qua processing
+        // Tuy nhiên cho phép chuyển linh hoạt: pending -> processing/cancelled, processing -> completed/cancelled
+        $allowedTransitions = [
+            'pending'    => ['processing', 'cancelled'],
+            'processing' => ['completed', 'cancelled'],
+            'cancelled'  => ['processing'],
+        ];
+
+        if (!in_array($newStatus, $allowedTransitions[$currentStatus] ?? [])) {
+            return back()->with('error', "Không thể chuyển trạng thái từ '{$currentStatus}' sang '{$newStatus}'.");
+        }
+
         $order->update($validated);
 
         return redirect()->route('admin.orders.show', $order)->with('success', 'Cập nhật trạng thái đơn hàng thành công.');

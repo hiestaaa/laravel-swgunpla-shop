@@ -45,6 +45,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-orders', [UserOrderController::class, 'index'])->name('user.orders.index');
     // Trang chi tiết
     Route::get('/my-orders/{order}', [UserOrderController::class, 'show'])->name('user.orders.show');
+    // Hủy đơn hàng
+    Route::post('/my-orders/{order}/cancel', [UserOrderController::class, 'cancel'])->name('user.orders.cancel');
 
     // === ĐÁNH GIÁ SẢN PHẨM ===
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');

@@ -58,7 +58,8 @@ class AddressController extends Controller
      */
     public function show(Address $address)
     {
-        //
+        Gate::authorize('view', $address);
+        return view('addresses.show', compact('address'));
     }
 
     /**

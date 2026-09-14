@@ -14,7 +14,7 @@ class ProductImage extends Model
     ];
 
     // Nhiều ảnh thuộc về 1 Product
-    public function products() {
+    public function product() {
         return $this->belongsTo(Product::class);
     }
 }

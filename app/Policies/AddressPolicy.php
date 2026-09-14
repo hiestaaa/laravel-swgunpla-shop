@@ -21,7 +21,7 @@ class AddressPolicy
      */
     public function view(User $user, Address $address): bool
     {
-        return false;
+        return $user->id === $address->user_id;
     }
 
     /**

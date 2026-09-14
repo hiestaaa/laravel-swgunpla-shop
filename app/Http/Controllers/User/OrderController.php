@@ -76,6 +76,26 @@ class OrderController extends Controller
     }
 
     /**
+     * Hủy đơn hàng của user (chỉ cho phép đơn đang chờ xử lý)
+     */
+    public function cancel(Request $request, Order $order)
+    {
+        // Kiểm tra quyền sở hữu
+        if ($order->user_id !== $request->user()->id) {
+            abort(403, 'Bạn không có quyền hủy đơn hàng này.');
+        }
+
+        // Chỉ cho phép hủy đơn hàng đang chờ xử lý
+        if ($order->status !== 'pending') {
+            return back()->with('error', 'Chỉ có thể hủy đơn hàng đang chờ xử lý.');
+        }
+
+        $order->update(['status' => 'cancelled']);
+
+        return back()->with('success', 'Đơn hàng đã được hủy thành công.');
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Order $order)

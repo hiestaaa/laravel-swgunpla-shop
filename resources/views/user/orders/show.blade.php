@@ -7,9 +7,20 @@
     <h2 class="h4 mb-0 fw-bold">
          Chi tiết Đơn hàng #{{ $order->id }}
     </h2>
-     <a href="{{ route('user.orders.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Quay lại
-     </a>
+     <div class="d-flex gap-2">
+        <a href="{{ route('user.orders.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại
+         </a>
+        @if($order->status == 'pending')
+        <form action="{{ route('user.orders.cancel', $order) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?');">
+            @csrf
+            @method('POST')
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-x-circle me-1"></i> Hủy đơn hàng
+            </button>
+        </form>
+        @endif
+     </div>
 </div>
 @endsection
 

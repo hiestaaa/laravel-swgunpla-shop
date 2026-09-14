@@ -18,9 +18,11 @@ class HomeController extends Controller
                               ->take(8)
                               ->get();
 
-        // Lấy 8 sản phẩm nổi bật (được đánh giá cao)
+        // Lấy 8 sản phẩm nổi bật (được đánh giá cao - chỉ đếm review đã duyệt)
         $featuredProducts = Product::with('category', 'brand')
-                                   ->withCount('reviews') // Đếm số lượng reviews
+                                   ->withCount(['reviews' => function ($query) {
+                                       $query->where('status', 'approved');
+                                   }])
                                    ->orderBy('reviews_count', 'desc') // Sắp xếp
                                    ->take(8)
                                    ->get();

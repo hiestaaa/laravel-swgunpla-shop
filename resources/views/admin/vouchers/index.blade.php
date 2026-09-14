@@ -15,7 +15,15 @@
 </div>
 
 <div class="card shadow-sm">
-     <div class="card-body p-0">
+    <div class="card-header bg-light border-bottom">
+        <form action="{{ route('admin.vouchers.index') }}" method="GET" class="d-flex">
+            <input type="text" name="search" class="form-control form-control-sm me-2" placeholder="Tìm mã voucher..." value="{{ request('search') }}">
+            <button type="submit" class="btn btn-primary btn-sm d-flex align-items-center">
+                <i class="bi bi-search me-1"></i> Tìm
+            </button>
+        </form>
+    </div>
+    <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover table-striped align-middle mb-0">
                 <thead class="table-light text-uppercase small">

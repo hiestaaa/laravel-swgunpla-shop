@@ -132,6 +132,11 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        // Xóa các file ảnh vật lý trong storage
+        foreach ($product->images as $image) {
+            Storage::disk('public')->delete($image->image_path);
+        }
+
         $product->delete();
         return redirect()->route('admin.products.index')->with('success', 'Xóa sản phẩm thành công.');
     }
