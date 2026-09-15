@@ -13,6 +13,11 @@ The application features a complete user workflow (product browsing, filtering, 
 
 ---
 
+## UPDATE v2.0
+Leveraged Claude AI to polish the project and implement new features.
+
+---
+
 ## Default Admin Credentials
 
 * **Email:** `admin@swgunpla.test`
